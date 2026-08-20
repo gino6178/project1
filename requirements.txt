@@ -1,0 +1,16 @@
+# The versions these results were produced with. Python 3.10.19.
+#
+# torch must be a build that matches the card. The wheel used here is 2.7.0+cu128, which
+# is what an RTX 5080 needs -- compute capability 12.0 is not in the default CUDA 12.6
+# wheels. Install it from the CUDA 12.8 index rather than PyPI:
+#
+#   pip install torch==2.7.0 --index-url https://download.pytorch.org/whl/cu128
+#
+torch==2.7.0
+numpy==1.26.4
+pandas==2.0.0
+opencv-python==4.11.0.86
+Pillow==10.0.0
+parse==1.22.1
+tqdm==4.67.3
+pycocotools==2.0.11
