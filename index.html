@@ -1,0 +1,398 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>TrackNetV5: Robust Shuttlecock Tracking via Motion Prompts and Spatiotemporal Attentive Fusion</title>
+<meta name="description" content="TrackNetV5 introduces multi-scale R(2+1)D blocks, a gated residual motion prompt layer and a spatial-channel-gate fusion module for shuttlecock tracking.">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bulma@0.9.4/css/bulma.min.css">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/academicons@1.9.4/css/academicons.min.css">
+<style>
+body{font-family:'Noto Sans',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif}
+.hero.is-light{background:#fafafa}
+.publication-title{font-weight:600;line-height:1.25}
+.author-block{display:inline-block;margin:0 .4rem}
+.publication-links .button{margin:.25rem}
+.section{padding:2.5rem 1.5rem}
+.content h2{font-weight:600;margin-bottom:1rem}
+.eq{font-family:'Latin Modern Math',Cambria,Georgia,serif;font-style:italic;text-align:center;margin:1.1rem 0;font-size:1.05rem}
+.eq .num{float:right;font-style:normal;color:#7a7a7a}
+table.metrics{font-variant-numeric:tabular-nums}
+table.metrics td,table.metrics th{text-align:right}
+table.metrics td:first-child,table.metrics th:first-child{text-align:left}
+.best{font-weight:600}
+.figure-placeholder{border:1px dashed #b5b5b5;border-radius:6px;padding:2.5rem 1rem;text-align:center;color:#7a7a7a;background:#fbfbfb}
+.bibtex pre{background:#f5f5f5;border-radius:6px;padding:1.25rem;overflow-x:auto;font-size:.85rem}
+.note{font-size:.9rem;color:#7a7a7a}
+</style>
+</head>
+<body>
+
+<section class="hero">
+<div class="hero-body">
+<div class="container is-max-desktop has-text-centered">
+  <h1 class="title is-2 publication-title">TrackNetV5: Robust Shuttlecock Tracking via<br>Motion Prompts and Spatiotemporal Attentive Fusion</h1>
+
+  <div class="is-size-5 publication-authors" style="margin-top:1.25rem">
+    <span class="author-block">Run-Lin Chang</span>
+    <span class="author-block">Yu-Shuen Wang</span>
+    <span class="author-block">Jiun-Long Huang</span>
+  </div>
+
+  <div class="is-size-6 publication-authors" style="margin-top:.5rem;color:#4a4a4a">
+    <span class="author-block">National Yang Ming Chiao Tung University, Hsinchu City, Taiwan</span>
+  </div>
+
+  <div class="publication-links" style="margin-top:1.5rem">
+    <a class="button is-dark is-rounded" href="https://github.com/gino6178/project1">
+      <span class="icon"><i class="fab fa-github"></i></span><span>Code</span>
+    </a>
+    <a class="button is-dark is-rounded" href="#bibtex">
+      <span class="icon"><i class="fas fa-quote-left"></i></span><span>BibTeX</span>
+    </a>
+  </div>
+</div>
+</div>
+</section>
+
+<section class="section" style="padding-top:0">
+<div class="container is-max-desktop">
+  <figure class="image" style="margin:0">
+    <img src="static/videos/demo_match3_1_06_05.gif" style="width:100%" alt="TrackNetV3 on the left, TrackNetV5-Lite on the right, tracking a shuttlecock rally">
+    <figcaption class="note has-text-centered" style="margin-top:.7rem">TrackNetV3 (left) and TrackNetV5-Lite (right) on the same rally</figcaption>
+  </figure>
+</div>
+</section>
+
+<section class="section hero is-light">
+<div class="container is-max-desktop">
+  <div class="content">
+    <h2 class="title is-3 has-text-centered">Abstract</h2>
+    <p>
+      Shuttlecock tracking is challenging due to the object's small size, extreme speed,
+      and severe motion blur. While current models like TrackNetV4 achieve high precision,
+      they rely on 2D convolutions to implicitly handle temporal relationships, failing to
+      capture complex spatiotemporal dynamics. We propose <strong>TrackNetV5</strong>, which
+      introduces multi-scale R(2+1)D blocks for explicit spatiotemporal feature extraction
+      and a gated residual motion prompt layer for high-quality motion attention.
+      Furthermore, a spatial-channel-gate module adaptively fuses motion priors with visual
+      features across multiple decoder layers. Experimental results show that TrackNetV5
+      achieves a state-of-the-art F1-Score of <strong>98.47</strong>. We also present
+      <strong>TrackNetV5-Lite</strong>, which maintains a high F1-Score of 98.06 with only
+      2.58M parameters, demonstrating significant potential for real-time edge deployment.
+    </p>
+  </div>
+</div>
+</section>
+
+<section class="section">
+<div class="container is-max-desktop">
+  <div class="content">
+    <h2 class="title is-3 has-text-centered">Method</h2>
+
+    <figure class="image" style="margin:1.75rem 0">
+      <img src="static/images/fig1_architecture.png" alt="Figure 1. Architecture of TrackNetV5.">
+      <figcaption class="note has-text-centered" style="margin-top:.75rem">The architecture of TrackNetV5. The network explicitly models spatiotemporal dynamics through R(2+1)D blocks. Motion priors are integrated into the MBConv-based decoder via multi-level SCG fusion.</figcaption>
+    </figure>
+
+    <p>
+      TrackNetV5 is an end-to-end spatiotemporal U-Net. An input tensor of shape
+      (<em>T</em>, <em>C</em>, <em>H</em>, <em>W</em>) is branched into two paths. The
+      <strong>motion branch</strong> produces a motion prior that is downsampled by max
+      pooling to match each decoder stage. The <strong>visual branch</strong> passes the
+      frames through an R(2+1)D block and reshapes them to (<em>T</em>·<em>C</em>,
+      <em>H</em>, <em>W</em>) for the backbone. The encoder uses Fused-MBConv blocks for
+      rapid early feature extraction; the decoder uses MBConv blocks combined with the SCG
+      module.
+    </p>
+
+    <p>
+      A width multiplier <em>α</em> scales every layer's channel count, giving a family of
+      models rather than a fixed configuration:
+    </p>
+    <p class="eq">C<sub>α</sub> = α × C <span class="num">(1)</span></p>
+
+    <h3 class="title is-4">1. Spatiotemporal modeling with R(2+1)D blocks</h3>
+    <p>
+      Previous TrackNet methods stack consecutive frames along the channel dimension,
+      treating a temporal sequence as a static spatial representation. TrackNetV5 instead
+      factorises a 3D kernel of size <em>t</em>×<em>d</em>×<em>d</em> into a spatial
+      convolution of size 1×<em>d</em>×<em>d</em> followed by a temporal convolution of
+      size <em>t</em>×1×1. Decoupling spatial appearance from temporal dynamics simplifies
+      optimisation and cuts both parameter count and computation, which is what makes
+      real-time edge deployment feasible.
+    </p>
+    <p>
+      In practice the temporal half acts as an implicit background suppressor: a
+      per-frame 2D convolution cannot separate the static court markings from the
+      moving players, so that structure propagates to the bottleneck, while the
+      factorised block removes it in the first layer.
+    </p>
+    <figure class="image" style="margin:1.75rem 0">
+      <img src="static/images/fig2_r2plus1d.png" alt="Figure 2. R(2+1)D block.">
+      <figcaption class="note has-text-centered" style="margin-top:.75rem">R(2+1)D block architecture. The 3D convolution is decomposed into a spatial convolution and a temporal convolution to capture both appearance and motion dynamics.</figcaption>
+    </figure>
+
+
+    <h3 class="title is-4">2. Gated residual motion prompt layer</h3>
+    <p>
+      From a grayscale sequence <em>X</em>, absolute frame differences are aggregated into a
+      mean difference map <em>D</em>:
+    </p>
+    <p class="eq">D = mean<sub>t</sub> |X<sub>t+1</sub> − X<sub>t</sub>| <span class="num">(2)</span></p>
+    <p>
+      A gate path decides, per pixel, how much of the raw difference to keep and how much to
+      replace with a learned transformation. The temperature <em>τ</em> is learnable and
+      constrained to [0.25, 4.0]:
+    </p>
+    <p class="eq">g = σ( Conv<sub>G</sub>(AvgPool(D)) / τ ) <span class="num">(3)</span></p>
+    <p class="eq">F = (1 − g) ⊙ D + g ⊙ T(D) <span class="num">(4)</span></p>
+    <p class="eq">M = σ( α·F + β ) <span class="num">(5)</span></p>
+    <p>
+      Unlike the static frame differencing of TrackNetV4, the gate suppresses background
+      noise while preserving fine-grained motion detail.
+    </p>
+    <figure class="image" style="margin:1.75rem 0">
+      <img src="static/images/fig3_motion_prompt.png" alt="Figure 3. Gated residual motion prompt layer.">
+      <figcaption class="note has-text-centered" style="margin-top:.75rem">Architecture of the gated residual motion prompt layer. The module extracts grayscale frame differences and uses a gated mechanism to adaptively fuse raw motion signals with transformed features, regulated by a learnable temperature τ.</figcaption>
+    </figure>
+
+    <figure class="image" style="margin:1.75rem 0">
+      <img src="static/videos/motion_prompt.gif" style="width:100%" alt="Input frame, the frame difference D, and the gate g of the motion prompt layer">
+      <figcaption class="note has-text-centered" style="margin-top:.75rem">
+        The input, the frame difference <em>D</em>, and the gate <em>g</em> that decides how
+        much of <em>D</em> survives into the prior. <em>g</em> spans
+        0.55&ndash;0.56 across the clip and is stretched over that range here, one range for
+        the whole clip so nothing flickers.
+      </figcaption>
+    </figure>
+
+    <h3 class="title is-4">3. Spatial-channel-gate fusion</h3>
+    <p>
+      The SCG module fuses the motion prior <em>M</em> with visual features <em>V</em> at
+      three decoder levels. A channel gate decides <em>what</em> to attend to from the
+      pooled statistics of both inputs, and a spatial gate decides <em>where</em>, from the
+      motion prior alone:
+    </p>
+    <p class="eq">g<sub>c</sub> = σ( MLP( [GAP(V), GAP(M)] ) ) <span class="num">(6)</span></p>
+    <p class="eq">g<sub>s</sub> = σ( Conv(M) ) <span class="num">(7)</span></p>
+    <p class="note">
+      Eq 7 as printed does not describe the implementation. The spatial gate is computed
+      from the channel mean of <em>V</em>, not from <em>M</em> &mdash; which is what CBAM,
+      cited here as the inspiration, actually does, and what the authors confirm their code
+      does. Driving it from <em>M</em> instead makes it inert: the prior is sparse enough
+      that after a 3&times;3 convolution the sigmoid sits in its linear region and the gate
+      spans 0.39&ndash;0.50 across the whole frame, weighting every pixel alike.
+    </p>
+    <p class="eq">V′ = V + N( (V ⊙ g<sub>s</sub>) ⊙ g<sub>c</sub> ) <span class="num">(8)</span></p>
+    <p>
+      The residual form means fusion refines the visual features rather than replacing them.
+    </p>
+    <figure class="image" style="margin:1.75rem 0">
+      <img src="static/images/fig4_scg.png" alt="Figure 4. Spatial-channel-gate module.">
+      <figcaption class="note has-text-centered" style="margin-top:.75rem">Architecture of the proposed SCG. The module uses parallel spatial and channel attention inspired by CBAM to fuse visual features V with motion priors M, with a residual connection for robust feature preservation.</figcaption>
+    </figure>
+
+    <figure class="image" style="margin:1.75rem 0">
+      <img src="static/videos/scg_attention.gif" style="width:100%" alt="Input frame beside the SCG spatial gate of the released model">
+      <figcaption class="note has-text-centered" style="margin-top:.75rem">
+        The spatial gate g<sub>s</sub> at the finest decoder level, on a fixed 0&ndash;1 scale.
+      </figcaption>
+    </figure>
+  </div>
+</div>
+</section>
+
+
+<section class="section" id="prediction-comparison">
+<div class="container is-max-desktop">
+  <div class="content">
+    <h2 class="title is-3 has-text-centered">Prediction comparison</h2>
+    <p class="has-text-centered note" style="margin:0 auto 2rem;max-width:44rem">
+      Left: TrackNetV3 with its released weights. Right: TrackNetV5-Lite. Both are the
+      tracking network alone, without trajectory rectification. The marker is the
+      predicted position and the trail covers the previous 16 frames.
+    </p>
+    <figure class="image" style="margin:0 0 2.5rem">
+      <img src="static/videos/demo_match3_1_06_05.gif" style="width:100%" alt="Side-by-side tracking comparison on match3, rally 1_06_05, frames 120-210">
+      <figcaption class="note" style="margin-top:.7rem">
+        match3, rally 1_06_05, frames 120-210<br>
+        within 4&nbsp;px &mdash; TrackNetV3 76.7%, TrackNetV5-Lite <strong>97.8%</strong>
+      </figcaption>
+    </figure>
+    
+    
+  </div>
+</div>
+</section>
+
+<section class="section hero is-light">
+<div class="container is-max-desktop">
+  <div class="content">
+    <h2 class="title is-3 has-text-centered">Results</h2>
+    <p class="has-text-centered note">Accuracy, precision, recall and F1 in %, 4 px tolerance. FPS measured on an RTX 5080.</p>
+
+    <table class="table is-fullwidth is-narrow metrics">
+      <thead><tr><th>Model</th><th>Params</th><th>Acc.</th><th>Prec.</th><th>Recall</th><th>F1</th><th>FPS</th></tr></thead>
+      <tbody>
+        <tr><td>TrackNetV4</td><td>11.34M</td><td>96.58</td><td>99.56</td><td>96.48</td><td>97.99</td><td>118.81</td></tr>
+        <tr><td>TrackNetV5</td><td>10.09M</td><td class="best">97.37</td><td class="best">99.72</td><td class="best">97.25</td><td class="best">98.47</td><td>60.70</td></tr>
+        <tr><td>TrackNetV5-Lite</td><td class="best">2.58M</td><td>96.69</td><td>99.59</td><td>96.57</td><td>98.06</td><td class="best">135.18</td></tr>
+      </tbody>
+    </table>
+    <p>
+      TrackNetV5-Lite reaches an F1-Score of 98.06 at 135.18 FPS with 2.58M parameters —
+      exceeding TrackNetV4 on every accuracy metric while running faster and using less than
+      a quarter of the parameters.
+    </p>
+
+      </div>
+</div>
+</section>
+
+<section class="section" id="releases">
+<div class="container is-max-desktop">
+  <div class="content">
+    <h2 class="title is-3 has-text-centered">Released models</h2>
+    <p class="has-text-centered note" style="margin:0 auto 2rem;max-width:44rem">
+      Both trained from scratch on <code>train</code> and <code>val</code>, with
+      <code>test</code> never in a gradient step.
+    </p>
+
+    <table class="table is-fullwidth is-narrow metrics">
+      <thead><tr><th>File</th><th>&alpha;</th><th>Batch</th><th>Epochs</th><th>F1</th><th>Threshold</th></tr></thead>
+      <tbody>
+        <tr><td><code>releases/TrackNetV5_Lite_best.pt</code></td><td>0.5</td>
+            <td>10</td><td>30</td><td class="best">98.363</td><td>0.35</td></tr>
+        <tr><td><code>releases/TrackNetV5_best.pt</code></td><td>1.0</td>
+            <td>4</td><td>30</td><td>98.331</td><td>0.30</td></tr>
+      </tbody>
+    </table>
+
+    <p class="note">
+      These figures are reproductions: they come from this repository's own training runs
+      and are measured with <code>evaluate.py</code>. The numbers the paper reports are in
+      the Results table above.
+    </p>
+
+  </div>
+</div>
+</section>
+
+
+<section class="section" id="code">
+<div class="container is-max-desktop">
+  <div class="content">
+    <h2 class="title is-3 has-text-centered">Code</h2>
+
+    <p>
+      The network, the training script and the released Lite checkpoint are in the
+      <a href="https://github.com/gino6178/project1">repository</a>. The model is
+      selected by name: <code>TrackNetV5</code>.
+    </p>
+
+    <h3 class="title is-4">Data</h3>
+    <p>
+      The dataset is not in the repository. It is the shuttlecock set released with
+      TrackNetV3: 26 broadcast matches cut into rallies, every frame labelled with the
+      shuttlecock position and a visibility flag. Place it under <code>data/</code> as
+      <code>{train,val,test}/match&lt;N&gt;/frame/&lt;rally&gt;/&lt;i&gt;.png</code> with
+      the matching <code>corrected_csv/</code>, and keep <code>drop_frame.json</code> at
+      the top level &mdash; evaluation skips those frames.
+    </p>
+    <p>
+      Then run <code>preprocess_images.py</code> once. It writes
+      <code>data_288x512/</code> at the working resolution and stores a per-rally median
+      frame beside it. That median is not an optimisation: <code>subtract_concat</code>
+      builds the fourth input channel from it, so training cannot start without it.
+    </p>
+
+    <h3 class="title is-4">Evaluation</h3>
+    <p>Score the released checkpoint on the test split:</p>
+    <div class="bibtex"><pre>python evaluate.py --weights releases/TrackNetV5_Lite_best.pt --split test</pre></div>
+    <h3 class="title is-4">Training</h3>
+    <p>This is the command that produced the released Lite weights:</p>
+    <div class="bibtex"><pre>python train.py   --model_name TrackNetV5 --model_alpha 0.5 --seq_len 5   --bg_mode subtract_concat --data_dir data_288x512   --train_splits train,val --eval_split test   --trim_train --trim_eval   --train_sliding_step 1 --epochs 30 --batch_size 10   --optim Adam --learning_rate 1e-3 --lr_scheduler ''   --amp_dtype bf16 --mixup_alpha 0.5   --ds_weight 0.25 --seed 26 --gpu 0   --save_dir runs/lite</pre></div>
+    <p>
+      The full-width model is the same command with <code>--model_alpha 1.0</code>
+      and <code>--batch_size 4</code>. <code>--train_splits</code> and <code>--eval_split</code> name the
+      splits directly rather than reading them from a config, which keeps what a run
+      was trained on and scored on visible in the command that produced it.
+    </p>
+  </div>
+</div>
+</section>
+
+
+<section class="section" id="bibtex">
+<div class="container is-max-desktop content bibtex">
+  <h2 class="title is-3">BibTeX<button class="button is-small is-rounded" style="float:right" onclick="navigator.clipboard.writeText(document.getElementById('bib').innerText); this.innerText='copied'">copy</button></h2>
+<pre id="bib">@inproceedings{chang2026TrackNetV5,
+  title     = {TrackNetV5: Robust Shuttlecock Tracking via Motion Prompts
+               and Spatiotemporal Attentive Fusion},
+  author    = {Chang, Run-Lin and Wang, Yu-Shuen and Huang, Jiun-Long},
+  booktitle = {Proceedings of IEEE International Conference on Image Processing (ICIP)},
+  month     = {September},
+  year      = {2026}
+}</pre>
+</div>
+</section>
+
+
+<section class="section hero is-light" id="acknowledgements">
+<div class="container is-max-desktop">
+  <div class="content">
+    <h2 class="title is-3 has-text-centered">Acknowledgements</h2>
+    <p>
+      This work rests on TrackNetV3 and TrackNetV4. TrackNetV3 contributed the shuttlecock
+      dataset in the form used here, the weighted binary cross-entropy loss, the sample
+      mixup, and the released weights that let us check our measurements against a
+      known model. TrackNetV4
+      contributed the motion attention idea that the prompt layer builds on. We are
+      grateful to both groups for publishing their code and weights; without them none of
+      the comparisons on this page would have been possible.
+    </p>
+    <p>
+      <strong>The evaluation protocol is TrackNetV4's.</strong> Their paper reports on the
+      10,836 frames that <code>drop_frame.json</code> marks as played, at a 4 px tolerance
+      and without trajectory rectification, and that is what every figure here is measured
+      on. Running the released TrackNetV3 weights through our evaluation returns F1 97.59
+      against the 97.5 their table reports for the same model, which is what pins the
+      protocol.
+    </p>
+    <div class="bibtex"><pre>@inproceedings{chen2023tracknetv3,
+  title     = {TrackNetV3: Enhancing shuttlecock tracking with augmentations
+               and trajectory rectification},
+  author    = {Chen, Yu-Jou and Wang, Yu-Shuen},
+  booktitle = {ACM Multimedia Asia},
+  pages     = {1--7},
+  year      = {2023},
+  doi       = {10.1145/3595916.3626370}
+}
+
+@inproceedings{raj2025tracknetv4,
+  title     = {TrackNetV4: Enhancing fast sports object tracking with
+               motion attention maps},
+  author    = {Raj, Arjun and Wang, Lei and Gedeon, Tom},
+  booktitle = {ICASSP},
+  pages     = {1--5},
+  year      = {2025}
+}</pre></div>
+  </div>
+</div>
+</section>
+
+
+<footer class="footer">
+<div class="container has-text-centered content">
+  <p class="note">
+    Page template adapted from <a href="https://github.com/nerfies/nerfies.github.io">Nerfies</a>,
+    licensed under <a href="http://creativecommons.org/licenses/by-sa/4.0/">CC BY-SA 4.0</a>.
+  </p>
+  <p class="note">Project page under construction — figures and videos to be added.</p>
+</div>
+</footer>
+
+</body>
+</html>
