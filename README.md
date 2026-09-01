@@ -1,6 +1,6 @@
 # TrackNetV5
 
-[Project page](https://gino6178.github.io/project1/)
+[Project page](https://gino6178.github.io/TrackNetV5/)
 
 An implementation of *TrackNetV5: Robust Shuttlecock Tracking via Motion Prompts and
 Spatiotemporal Attentive Fusion* (Chang, Wang and Huang, ICIP 2026) &mdash; a shuttlecock
